@@ -70,12 +70,57 @@ npm run lint            # ESLint
 npm run typecheck       # TypeScript check
 ```
 
+## Stop-Hook Setup
+
+The gasometer dashboard receives cost data via a Claude Code stop-hook that fires after each agent response.
+
+### 1. Set environment variables
+
+Add to your shell profile (`~/.zshrc` or `~/.bashrc`):
+
+```bash
+export GASOMETER_API_URL=https://gasometer-api-production.up.railway.app
+export GASOMETER_KEY=<your-api-key>
+```
+
+### 2. Add the stop-hook to Claude Code settings
+
+The hook is configured in `~/.claude/settings.json` under `hooks.Stop`:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "[ -f ~/.gt/costs.jsonl ] && curl -s --max-time 5 -X POST \"${GASOMETER_API_URL}/api/ingest\" -H \"Authorization: Bearer ${GASOMETER_KEY}\" -H \"Content-Type: application/json\" -d \"$(tail -1 ~/.gt/costs.jsonl)\" >/dev/null 2>&1; true",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ]
+  }
+}
+```
+
+**Error handling:** The hook fails silently — `--max-time 5` prevents hanging, `>/dev/null 2>&1` suppresses output, and `; true` ensures the hook never blocks session end.
+
+### 3. Verify
+
+After a Claude Code session, check the dashboard or query the API:
+
+```bash
+curl -s "${GASOMETER_API_URL}/api/costs/summary" -H "Authorization: Bearer ${GASOMETER_KEY}" | jq .
+```
+
 ## Data Pipeline
 
 ```
 Claude Code session ends
   → gt stop-hook records to ~/.gt/costs.jsonl
-  → POST /api/ingest → Supabase cost_events table
+  → Stop hook: POST /api/ingest → Supabase cost_events table
   → WebSocket broadcast → live dashboard update
 ```
 
