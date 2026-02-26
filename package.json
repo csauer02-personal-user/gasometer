@@ -1,0 +1,20 @@
+{
+  "name": "gasometer",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "test:backend": "npm run test -w backend",
+    "test:e2e": "npm run test:e2e -w frontend",
+    "build": "npm run build --workspaces",
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
