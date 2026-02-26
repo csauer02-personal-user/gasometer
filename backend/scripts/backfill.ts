@@ -13,6 +13,20 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Known session_id prefix → rig mapping (derived from records that have explicit rig)
+const PREFIX_TO_RIG: Record<string, string> = {
+  ca: "careers",
+  do: "doccompare",
+  ga: "gasometer",
+  ha: "happyhour",
+  om: "officemonitor",
+};
+
+function parseRigFromSessionId(sessionId: string): string | null {
+  const prefix = sessionId.split("-")[0];
+  return PREFIX_TO_RIG[prefix] ?? null;
+}
+
 async function backfill() {
   const lines = readFileSync(COSTS_FILE, "utf-8").trim().split("\n");
   console.log(`Found ${lines.length} cost records to backfill`);
@@ -27,8 +41,15 @@ async function backfill() {
         session_id: record.session_id,
         role: record.role,
         worker: record.worker ?? null,
-        rig: record.rig ?? null,
+        rig: record.rig ?? parseRigFromSessionId(record.session_id),
         cost_usd: record.cost_usd,
+        input_tokens: record.input_tokens ?? null,
+        output_tokens: record.output_tokens ?? null,
+        cache_read_tokens: record.cache_read_tokens ?? null,
+        cache_create_tokens: record.cache_create_tokens ?? null,
+        model: record.model ?? null,
+        duration_sec: record.duration_sec ?? null,
+        beads_closed: record.beads_closed ?? null,
         ended_at: record.ended_at,
       };
     });
@@ -42,6 +63,10 @@ async function backfill() {
       errors += batch.length;
     } else {
       inserted += batch.length;
+    }
+
+    if ((i / BATCH_SIZE + 1) % 5 === 0) {
+      console.log(`  Progress: ${Math.min(i + BATCH_SIZE, lines.length)}/${lines.length}`);
     }
   }
 
