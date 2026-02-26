@@ -174,7 +174,45 @@ On ingest: `{"type": "cost_event", "data": {...}}`
 | Railway | gasometer-api | (railway dashboard) |
 | Vercel | gasometer-dashboard | (vercel dashboard) |
 
-## Frontend Visualizations (planned)
+## Frontend Architecture
+
+### Layout & Navigation
+
+- `layout.tsx` — Root layout with dark theme (`bg-gray-950`), active-state navigation via `Nav` component
+- `Nav` — Client component using `next/link` + `usePathname` for active link highlighting
+- Responsive grid: KPI cards stack on mobile (1 col → 2 col → 4 col)
+
+### Dashboard Page (`/`)
+
+Client component that fetches live data:
+
+- **KPI Cards**: 4 summary cards (Today, This Week, This Month, Sessions) powered by `useSummary()` hook
+  - Auto-refresh every 30s via SWR
+  - Loading skeleton animation while data loads
+  - Subtitles show event counts
+- **Date Range Picker**: Preset buttons (Today, 7d, 30d) + custom date range inputs
+- **Filter Chips**: Toggle-able role and rig filters with color-coded active states
+- **Filtered Summary**: Shows filtered totals when filters are active
+- **D3 Visualization Grid**: 4 placeholder cards for future D3 charts (Bead 5)
+
+### Components (`frontend/src/components/`)
+
+| Component | Path | Purpose |
+|-----------|------|---------|
+| `Nav` | `ui/Nav.tsx` | Navigation bar with active link state |
+| `KpiCard` | `ui/KpiCard.tsx` | Summary stat card with loading state |
+| `DateRangePicker` | `ui/DateRangePicker.tsx` | Preset + custom date range selector |
+| `FilterChips` | `ui/FilterChips.tsx` | Toggle-able filter chip group |
+
+### Data Hooks (`frontend/src/hooks/`)
+
+| Hook | Endpoint | Refresh |
+|------|----------|---------|
+| `useSummary()` | `GET /api/stats/summary` | 30s |
+| `useDailyStats(from?, to?)` | `GET /api/stats/daily` | 60s |
+| `useWebSocket()` | `WS /ws/live` | Real-time |
+
+### Frontend Visualizations (planned)
 
 1. **Cost River** — Stacked area chart (cost by role over time)
 2. **Burn Rate Gauge** — Radial gauge with green/yellow/red zones
