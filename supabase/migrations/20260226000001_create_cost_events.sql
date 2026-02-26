@@ -26,10 +26,10 @@ create index if not exists idx_cost_events_rig on cost_events(rig);
 create table if not exists daily_summaries (
   date date not null,
   role text not null,
-  rig text,
+  rig text not null default '',
   total_usd numeric(10,6),
   session_count integer,
   total_input_tokens bigint,
   total_output_tokens bigint,
-  primary key (date, role, coalesce(rig, ''))
+  primary key (date, role, rig)
 );
