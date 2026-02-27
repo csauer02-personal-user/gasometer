@@ -15,3 +15,5 @@ coverage/
 .claude/commands/
 .logs/
 .beads/
+.vercel
+.env*.local

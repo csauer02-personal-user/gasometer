@@ -41,10 +41,37 @@ ingestRouter.post("/", async (req: Request, res: Response) => {
   }
 
   const event = parsed.data;
+  const baseSessionId = event.session_id;
+
+  // costs.jsonl sends cumulative running totals per session_id.
+  // Session IDs are reused across conversation restarts (cost resets to ~0).
+  // We detect resets and create new segments.
+
+  // Find the latest record for this base session
+  const { data: existing } = await supabase
+    .from("cost_events")
+    .select("session_id, cost_usd")
+    .eq("base_session_id", baseSessionId)
+    .order("ended_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  let sessionId: string;
+
+  if (existing && event.cost_usd >= existing.cost_usd) {
+    // Continuation of same segment — update in place
+    sessionId = existing.session_id;
+  } else {
+    // New segment (no existing, or cost dropped = new conversation)
+    const date = event.ended_at.slice(0, 10);
+    const seq = Date.now().toString(36);
+    sessionId = `${baseSessionId}:${date}:${seq}`;
+  }
 
   const { error } = await supabase.from("cost_events").upsert(
     {
-      session_id: event.session_id,
+      session_id: sessionId,
+      base_session_id: baseSessionId,
       role: event.role,
       worker: event.worker ?? null,
       rig: event.rig ?? null,
@@ -68,7 +95,7 @@ ingestRouter.post("/", async (req: Request, res: Response) => {
   }
 
   // Broadcast to WebSocket clients
-  broadcast({ type: "cost_event", data: event });
+  broadcast({ type: "cost_event", data: { ...event, session_id: sessionId } });
 
   res.status(201).json({ status: "ingested" });
 });
