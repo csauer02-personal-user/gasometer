@@ -56,7 +56,7 @@ async function backfill() {
 
     const { error } = await supabase
       .from("cost_events")
-      .upsert(batch, { onConflict: "session_id,ended_at" });
+      .upsert(batch, { onConflict: "session_id" });
 
     if (error) {
       console.error(`Batch ${i / BATCH_SIZE + 1} error:`, error.message);

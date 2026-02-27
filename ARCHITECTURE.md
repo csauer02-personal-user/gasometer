@@ -51,7 +51,7 @@ Gasometer is the cost intelligence dashboard for Gas Town — a multi-agent work
 │ ended_at            │ timestamptz NOT NULL                  │
 │ ingested_at         │ timestamptz (default now())           │
 ├─────────────────────┴───────────────────────────────────────┤
-│ UNIQUE(session_id, ended_at)                                │
+│ UNIQUE(session_id)                                          │
 │ INDEX(ended_at), INDEX(role), INDEX(rig)                    │
 └─────────────────────────────────────────────────────────────┘
 

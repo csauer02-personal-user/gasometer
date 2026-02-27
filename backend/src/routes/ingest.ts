@@ -58,7 +58,7 @@ ingestRouter.post("/", async (req: Request, res: Response) => {
       beads_closed: event.beads_closed ?? null,
       ended_at: event.ended_at,
     },
-    { onConflict: "session_id,ended_at" }
+    { onConflict: "session_id" }
   );
 
   if (error) {
