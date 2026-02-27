@@ -158,8 +158,16 @@ Returns today / last 7 days / this month aggregates.
 
 ### `WS /ws/live` — Real-time cost stream
 
-On connect: `{"type": "connected", "message": "Gasometer live feed"}`
-On ingest: `{"type": "cost_event", "data": {...}}`
+WebSocket endpoint for live cost event streaming. The frontend `useWebSocket` hook connects automatically with 3-second reconnect on disconnect.
+
+**Protocol:**
+
+1. On connect, server sends: `{"type": "connected", "message": "Gasometer live feed"}`
+2. On each `POST /api/ingest`, server broadcasts to all connected clients: `{"type": "cost_event", "data": {...}}`
+3. The `data` payload matches the ingest request body (session_id, role, worker, cost_usd, ended_at, etc.)
+4. Client-side buffer: last 100 events (FIFO, newest first)
+
+**Frontend env:** `NEXT_PUBLIC_WS_URL` (default: `ws://localhost:3001/ws/live`, production: `wss://gasometer-api-production.up.railway.app/ws/live`)
 
 ### `GET /health` — Health check
 
@@ -194,6 +202,16 @@ Client component that fetches live data:
 - **Filter Chips**: Toggle-able role and rig filters with color-coded active states
 - **Filtered Summary**: Shows filtered totals when filters are active
 - **D3 Visualization Grid**: 4 placeholder cards for future D3 charts (Bead 5)
+
+### Live Page (`/live`)
+
+Client component for real-time cost event streaming:
+
+- **Connection Status**: Green/red indicator dot with "Connected"/"Disconnected" label
+- **Event Feed**: Scrolling list of cost events, newest first (max 100)
+- **Event Cards**: Each event shows role (color-coded dot), worker name, cost (USD), and timestamp
+- **Auto-reconnect**: 3-second reconnect via `useWebSocket` hook
+- **Empty State**: Shows "Waiting for cost events..." when connected with no events, or "Connecting..." when disconnected
 
 ### Components (`frontend/src/components/`)
 
