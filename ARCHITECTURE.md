@@ -221,6 +221,11 @@ Client component for real-time cost event streaming:
 | `KpiCard` | `ui/KpiCard.tsx` | Summary stat card with loading state |
 | `DateRangePicker` | `ui/DateRangePicker.tsx` | Preset + custom date range selector |
 | `FilterChips` | `ui/FilterChips.tsx` | Toggle-able filter chip group |
+| `CostRiver` | `viz/CostRiver.tsx` | Stacked area chart (cost by role over time) |
+| `BurnGauge` | `viz/BurnGauge.tsx` | Radial donut gauge with green/yellow/red burn zones |
+| `HeatCalendar` | `viz/HeatCalendar.tsx` | GitHub-style 365-day spend intensity grid |
+| `FlameTimeline` | `viz/FlameTimeline.tsx` | Horizontal session bars showing parallelism |
+| `RoleTreemap` | `viz/RoleTreemap.tsx` | Nested treemap: role to rig cost breakdown |
 
 ### Data Hooks (`frontend/src/hooks/`)
 
@@ -228,13 +233,26 @@ Client component for real-time cost event streaming:
 |------|----------|---------|
 | `useSummary()` | `GET /api/stats/summary` | 30s |
 | `useDailyStats(from?, to?)` | `GET /api/stats/daily` | 60s |
+| `useRoleStats(from?, to?)` | `GET /api/stats/roles` | 60s |
+| `useRigStats(from?, to?)` | `GET /api/stats/rigs` | 60s |
+| `useCostEvents(from?, to?, role?, rig?)` | `GET /api/costs` | 60s |
 | `useWebSocket()` | `WS /ws/live` | Real-time |
 
-### Frontend Visualizations (planned)
+### D3 Visualization Catalog
 
-1. **Cost River** — Stacked area chart (cost by role over time)
-2. **Burn Rate Gauge** — Radial gauge with green/yellow/red zones
-3. **Heat Calendar** — GitHub-style daily cost intensity grid
-4. **Session Flame Timeline** — Overlapping session bars showing parallelism
-5. **Role Treemap** — Nested rectangles (role → rig → worker)
-6. **Cost per Bead** — Scatter plot (efficiency metric, future)
+All visualizations are in `frontend/src/components/viz/`, built with D3.js v7 as self-contained React components. Each uses `useRef` for SVG rendering, responsive sizing, and hover tooltips.
+
+| Component | Type | Data Source | Key Features |
+|-----------|------|-------------|--------------|
+| `CostRiver` | Stacked area chart | `/api/stats/daily` | X: days, Y: cumulative USD, stacked by role. Smooth monotone curves, hover tooltips, role-colored layers |
+| `BurnGauge` | Radial donut gauge | `/api/stats/summary` | Shows today's spend against green ($0-10) / yellow ($10-25) / red ($25+) zones. Animated arc transition, hourly rate + daily average labels |
+| `HeatCalendar` | GitHub-style grid | `/api/stats/daily` | 365-day contribution calendar. YlOrRd color scale by daily spend intensity. Day/month labels, click-to-drill-down support |
+| `FlameTimeline` | Horizontal bar chart | `/api/costs` | Session bars on time axis. Width = duration, color = role, opacity = cost. Greedy lane-packing algorithm shows parallel sessions |
+| `RoleTreemap` | Nested treemap | `/api/stats/roles` + `/api/stats/rigs` | Role-to-rig hierarchy. Rectangle size = cost, color = role. Labels + value text with overflow truncation |
+
+**Shared conventions:**
+- Role colors from `lib/colors.ts` (`ROLE_COLORS` map + `getRoleColor()`)
+- USD formatting from `lib/format.ts` (`formatUsd()`)
+- Tooltip pattern: absolute-positioned div with opacity transition, positioned via `d3.pointer()`
+- Responsive: reads container dimensions on render, no fixed sizes
+- Each chart has a `data-testid` attribute for Playwright E2E testing

@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useSummary, useDailyStats } from "@/hooks/useCostData";
+import { useSummary, useDailyStats, useRoleStats, useRigStats, useCostEvents } from "@/hooks/useCostData";
 import { formatUsd } from "@/lib/format";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { ROLE_COLORS } from "@/lib/colors";
+import { CostRiver } from "@/components/viz/CostRiver";
+import { BurnGauge } from "@/components/viz/BurnGauge";
+import { HeatCalendar } from "@/components/viz/HeatCalendar";
+import { FlameTimeline } from "@/components/viz/FlameTimeline";
+import { RoleTreemap } from "@/components/viz/RoleTreemap";
 
 type Preset = "today" | "7d" | "30d" | "custom";
 
@@ -44,6 +49,9 @@ export default function DashboardPage() {
 
   const range = getDateRange(preset, customFrom, customTo);
   const { data: dailyData } = useDailyStats(range.from, range.to);
+  const { data: roleData } = useRoleStats(range.from, range.to);
+  const { data: rigData } = useRigStats(range.from, range.to);
+  const { data: costEvents } = useCostEvents(range.from, range.to);
 
   const filteredDaily = useMemo(() => {
     if (!dailyData?.data) return [];
@@ -58,6 +66,16 @@ export default function DashboardPage() {
     const sessions = filteredDaily.reduce((sum, e) => sum + e.session_count, 0);
     return { total, sessions };
   }, [filteredDaily]);
+
+  // Aggregate daily totals for heat calendar (collapse role dimension)
+  const heatCalendarData = useMemo(() => {
+    if (!dailyData?.data) return [];
+    const map = new Map<string, number>();
+    for (const d of dailyData.data) {
+      map.set(d.date, (map.get(d.date) ?? 0) + d.total_usd);
+    }
+    return Array.from(map.entries()).map(([date, total_usd]) => ({ date, total_usd }));
+  }, [dailyData]);
 
   return (
     <div>
@@ -133,19 +151,44 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* D3 Visualization placeholders */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 h-64 flex items-center justify-center text-gray-500">
-          Cost River (D3) — Bead 5
+      {/* D3 Visualizations */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 h-72" data-testid="cost-river">
+          <h3 className="text-sm font-medium text-gray-400 mb-2">Cost River</h3>
+          <div className="h-[calc(100%-2rem)]">
+            <CostRiver data={filteredDaily} />
+          </div>
         </div>
-        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 h-64 flex items-center justify-center text-gray-500">
-          Burn Rate Gauge (D3) — Bead 5
+        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 h-72" data-testid="burn-gauge">
+          <h3 className="text-sm font-medium text-gray-400 mb-2">Burn Rate</h3>
+          <div className="h-[calc(100%-2rem)]">
+            <BurnGauge
+              todayUsd={summary?.today.total_usd ?? 0}
+              weekUsd={summary?.week.total_usd ?? 0}
+              sessions={summary?.today.sessions ?? 0}
+            />
+          </div>
         </div>
-        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 h-64 flex items-center justify-center text-gray-500">
-          Heat Calendar (D3) — Bead 5
+      </div>
+
+      <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 mb-6" data-testid="heat-calendar">
+        <h3 className="text-sm font-medium text-gray-400 mb-2">Spend Calendar</h3>
+        <div className="h-32">
+          <HeatCalendar data={heatCalendarData} />
         </div>
-        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 h-64 flex items-center justify-center text-gray-500">
-          Role Treemap (D3) — Bead 5
+      </div>
+
+      <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 h-64 mb-6" data-testid="flame-timeline">
+        <h3 className="text-sm font-medium text-gray-400 mb-2">Session Timeline</h3>
+        <div className="h-[calc(100%-2rem)]">
+          <FlameTimeline data={costEvents?.data ?? []} />
+        </div>
+      </div>
+
+      <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 h-72" data-testid="role-treemap">
+        <h3 className="text-sm font-medium text-gray-400 mb-2">Role Treemap</h3>
+        <div className="h-[calc(100%-2rem)]">
+          <RoleTreemap roleData={roleData?.data ?? []} rigData={rigData?.data ?? []} />
         </div>
       </div>
     </div>
