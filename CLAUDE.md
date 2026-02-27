@@ -70,6 +70,41 @@ supabase/
 - **Linting**: ESLint flat config — `npm run lint`
 - **Type checking**: `npm run typecheck`
 
+## Polecat Recovery (CRITICAL — read this)
+
+Polecats frequently die before running `gt done`. **They often DO complete their work** — committed code sits on their feature branch. The coordinator (mayor) must recover this work manually:
+
+### Checking dead polecats
+1. Check if polecat session is still alive: `gt crew status` or `tmux ls | grep gt-`
+2. If dead, check their worktree for commits: `git -C <worktree-path> log --oneline -5`
+3. Look for the feature branch: `git branch -a | grep <polecat-name>`
+
+### Recovering completed work from dead polecats
+```bash
+# From the RIG directory (not witness, not hq):
+cd /Users/csauer/gt/gasometer/mayor/rig/
+gt mq submit --branch <branch-name> --issue <bead-id> --no-cleanup
+
+# Then nudge refinery to process the MR:
+gt mail send refinery "MR ready for <bead-id>"
+```
+
+### Wisp cleanup
+Dead polecats leave behind mol-polecat-work wisp chains (~15 wisps each) that bloat context and slow down `bd list`. Clean them periodically:
+```bash
+# List wisp count
+bd list --limit 0 | grep -c wisp
+
+# Bulk close orphan wisps (careful — verify no real beads match)
+bd list --limit 0 | grep 'ga-wisp-' | awk '{print $2}' | xargs bd close --force
+bd list --limit 0 | grep 'ga-mol-' | awk '{print $2}' | xargs bd close --force
+```
+
+### Prevention
+- Limit concurrent polecats to ~6 across all rigs (Dolt crashes under load)
+- Check on polecats every 5 minutes after slinging
+- If a polecat dies on spawn, try re-slinging once — if it dies again, investigate Dolt/wisp pollution
+
 ## Key Patterns
 
 - Cost events are deduplicated by (session_id, ended_at) on upsert
